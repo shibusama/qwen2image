@@ -1,0 +1,37 @@
+# 敏感配置：严禁打进镜像
+.env
+.env.local
+*.pem
+*.key
+
+# 版本控制
+.git
+.gitignore
+.codegraph
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+
+# 运行/日志
+.preview
+.cozeproj
+*.log
+logs/
+
+# 生成样例图片
+sample_*.png
+
+# 系统/编辑器
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Docker 自身文件（无需复制进镜像）
+Dockerfile
+.dockerignore
+docker-compose.yml

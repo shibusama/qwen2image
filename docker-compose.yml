@@ -1,0 +1,25 @@
+# 千问知识海报 · Qwen2Image — Docker Compose 一键部署
+# 用法：
+#   1. cp .env.example .env  并填入 DASHSCOPE_API_KEY
+#   2. docker compose up -d --build
+#   3. 访问 http://<服务器IP>:5000
+# 说明：.env 文件会被 compose 自动读取并注入容器；缺失时服务也能启动（生成时需在页面填写 Key）。
+
+services:
+  qwen-infographic:
+    build: .
+    image: qwen-infographic:latest
+    container_name: qwen-infographic
+    restart: unless-stopped
+    ports:
+      # 宿主机端口可改：${PORT:-5000}:5000
+      - "${PORT:-5000}:5000"
+    environment:
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-}
+      - DASHSCOPE_BASE_URL=${DASHSCOPE_BASE_URL:-}
+    # 如需容器内改监听端口：- DEPLOY_RUN_PORT=8080
+    # healthcheck:
+    #   test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
+    #   interval: 30s
+    #   timeout: 5s
+    #   retries: 3
