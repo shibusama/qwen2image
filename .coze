@@ -9,5 +9,13 @@ run = ["sh", "-c", "python -m uvicorn app:app --host 0.0.0.0 --port ${DEPLOY_RUN
 
 [deploy]
 build = ["python", "-m", "pip", "install", "-r", "requirements.txt"]
-# exec 是关键：让 uvicorn 接管 sh 进程，服务进程持续存活，避免被平台误判退出
-run = ["sh", "-c", "exec python -m uvicorn app:app --host 0.0.0.0 --port ${DEPLOY_RUN_PORT:-5000}"]
+# ⚠️ 数组项不做 shell 展开：${DEPLOY_RUN_PORT:-5000} 会以字面量传给 --port，实测报 Invalid value 启动失败
+# 若部署失败，请改回可用版本：
+# run = ["sh", "-c", "exec python -m uvicorn app:app --host 0.0.0.0 --port ${DEPLOY_RUN_PORT:-5000} --log-level info"]
+run = [
+    "python", "-m", "uvicorn",
+    "app:app",
+    "--host", "0.0.0.0",
+    "--port", "${DEPLOY_RUN_PORT:-5000}",
+    "--log-level", "info"
+]
