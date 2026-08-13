@@ -1,0 +1,10 @@
+[project]
+requires = ["nodejs-24"]
+
+[dev]
+build = ["bash", "-c", "pip install --break-system-packages -r requirements.txt"]
+run = ["sh", "-c", "python -m uvicorn app:app --host 0.0.0.0 --port ${DEPLOY_RUN_PORT}"]
+
+[deploy]
+build = ["bash", "-c", "pip install --break-system-packages -r requirements.txt"]
+run = ["sh", "-c", "python -m uvicorn app:app --host 0.0.0.0 --port ${DEPLOY_RUN_PORT}"]
