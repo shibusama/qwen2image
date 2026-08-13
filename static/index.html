@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>千问知识海报</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>千问知识海报</h1>
+      <p>把一份文档 / 一段文本，变成一张信息图海报或思维导图。<br/>由 <code>qwen-plus</code> 提炼要点，<code>qwen-image-3.0-pro</code> 排版成图。</p>
+    </header>
+
+    <section class="card">
+      <div class="tabs">
+        <button class="tab active" data-mode="text">粘贴文本</button>
+        <button class="tab" data-mode="file">上传文档</button>
+        <button class="tab" data-mode="url">抓取链接</button>
+      </div>
+
+      <div class="panel" data-panel="text">
+        <textarea id="content" rows="7" placeholder="把要转换的文章 / 笔记 / 讲解文本粘贴到这里…"></textarea>
+      </div>
+      <div class="panel hidden" data-panel="file">
+        <label class="drop" for="file">
+          <input id="file" type="file" accept=".pdf,.docx,.txt,.md" />
+          <span>点击选择文件（PDF / DOCX / TXT / MD）</span>
+        </label>
+      </div>
+      <div class="panel hidden" data-panel="url">
+        <input id="url" type="text" placeholder="输入网页链接，例如 https://example.com/article" />
+      </div>
+
+      <div class="type-cards">
+        <button class="type-card active" data-type="poster">
+          <span class="tc-title">信息图海报</span>
+          <span class="tc-desc">一句话总结成海报</span>
+          <span class="tc-tag">消耗生图额度</span>
+        </button>
+        <button class="type-card" data-type="mindmap">
+          <span class="tc-title">思维导图</span>
+          <span class="tc-desc">中心 + 放射分支成图</span>
+          <span class="tc-tag">消耗生图额度</span>
+        </button>
+      </div>
+
+      <div class="options">
+        <label class="opt">
+          <span>版式</span>
+          <select id="size">
+            <option value="square">方图 1:1</option>
+            <option value="landscape">横图 16:9</option>
+            <option value="portrait">竖图 9:16</option>
+          </select>
+        </label>
+        <label class="opt">
+          <span>风格</span>
+          <select id="style">
+            <option value="creative-long" selected>创意长图</option>
+            <option value="vaporwave">蒸汽波</option>
+            <option value="modern-gradient">现代渐变</option>
+            <option value="editorial">杂志编辑</option>
+            <option value="handdrawn">手绘插画</option>
+            <option value="neon">暗色霓虹</option>
+            <option value="vintage">复古报纸</option>
+            <option value="swiss">极简瑞士</option>
+          </select>
+        </label>
+        <label class="opt grow">
+          <span>API Key（可留空，使用 .env 中的）</span>
+          <input id="apiKey" type="password" placeholder="sk-…" autocomplete="off" />
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="go" class="btn primary">生成信息图海报</button>
+        <button id="again" class="btn hidden">再生成一张</button>
+      </div>
+
+      <p id="status" class="status" role="status"></p>
+    </section>
+
+    <section id="result" class="card result hidden">
+      <h2>生成结果</h2>
+      <div id="previewWrap" class="preview"><img id="preview" alt="生成的结果" /></div>
+      <div class="actions">
+        <a id="download" class="btn" download="output.png">下载图片</a>
+      </div>
+    </section>
+
+    <footer class="note">提示：一次生成约需 30~60 秒，请耐心等待。</footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

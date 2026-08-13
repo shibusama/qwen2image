@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+dashscope
+python-docx
+pypdfium2
+requests
+python-dotenv

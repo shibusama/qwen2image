@@ -92,3 +92,5 @@ logs/
 
 # CodeGraph index
 .codegraph
+# 生成图片样例
+sample_*.png
