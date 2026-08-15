@@ -36,39 +36,6 @@ python -m uvicorn app:app --host 127.0.0.1 --port 8000
 
 浏览器打开 <http://localhost:8000> 即可使用。
 
-## Docker 部署（推荐用于服务器/生产）
-
-项目已内置 `Dockerfile` 与 `docker-compose.yml`，可直接容器化部署：
-
-```bash
-# 1. 准备环境变量（复制模板并填入 API Key）
-cp .env.example .env
-
-# 2. 构建并启动
-docker compose up -d --build
-
-# 3. 查看状态 / 日志 / 停止
-docker compose ps
-docker compose logs -f
-docker compose down
-```
-
-访问 `http://<服务器IP>:5000`（宿主机端口可通过 `.env` 中 `PORT=8080` 修改）。
-
-单容器方式（不用 compose）：
-
-```bash
-docker build -t qwen-infographic .
-docker run -d --name qwen-infographic -p 5000:5000 --env-file .env --restart unless-stopped qwen-infographic
-```
-
-配置说明：
-
-- `DASHSCOPE_API_KEY` / `DASHSCOPE_BASE_URL` 通过 `.env` 注入容器（compose 自动读取；`.env` 缺失时服务也能启动，生成时在页面填写 Key 即可）
-- 容器内监听端口由环境变量 `DEPLOY_RUN_PORT` 控制，默认 `5000`；宿主机端口由 compose 的 `${PORT:-5000}` 控制
-- 镜像以非 root 用户运行，`.dockerignore` 已排除 `.env` / `.git`，避免敏感信息入镜像
-- 如需更换模型/尺寸等，直接改 `qwen_client.py` 后 `docker compose up -d --build` 重建即可
-
 ## 使用说明
 
 1. 选择输入方式：粘贴文本 / 上传文档 / 抓取链接
