@@ -3,6 +3,10 @@
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+# 必须在 import qwen_client 之前加载 .env，否则 DASHSCOPE_BASE_URL / IMAGE_MODEL 无法生效
+load_dotenv()
+
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -10,8 +14,6 @@ from fastapi.staticfiles import StaticFiles
 import extract
 import qwen_client
 from prompt_builder import STYLES, build_mindmap_prompt, build_poster_prompt
-
-load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"

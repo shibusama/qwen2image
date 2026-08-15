@@ -15,6 +15,7 @@ import dashscope
 from dashscope import Generation, MultiModalConversation
 
 SUMMARY_MODEL = "qwen-plus"
+# 默认生图模型；可在 .env 用 IMAGE_MODEL=... 覆盖（推荐 qwen-image-max 最强）
 IMAGE_MODEL = "qwen-image-3.0-pro"
 
 
@@ -85,7 +86,7 @@ def generate_poster(poster_prompt: str, size: str = "2048*2048", api_key: str = 
         raise QwenError("缺少 API Key：请在页面填入，或配置 .env 中的 DASHSCOPE_API_KEY")
     resp = MultiModalConversation.call(
         api_key=key,
-        model=IMAGE_MODEL,
+        model=os.getenv("IMAGE_MODEL") or IMAGE_MODEL,
         messages=[{"role": "user", "content": [{"text": poster_prompt}]}],
         result_format="message",
         stream=False,
