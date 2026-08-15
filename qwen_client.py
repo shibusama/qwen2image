@@ -1,8 +1,8 @@
 """千问 API 封装：qwen-plus 摘要 + qwen-image-3.0-pro 生图。
 
-默认走阿里云百炼（大陆站）https://dashscope.aliyuncs.com/api/v1。
-海外千问 AI 平台（platform.qianwenai.com）请在 .env 设置
-DASHSCOPE_BASE_URL=https://dashscope-intl.aliyuncs.com/api/v1。
+API 地址统一从 .env 的 DASHSCOPE_BASE_URL 读取（海外千问平台
+https://dashscope-intl.aliyuncs.com/api/v1；阿里云百炼大陆站
+https://dashscope.aliyuncs.com/api/v1），未配置时回退到 DEFAULT_BASE_URL。
 Qwen-Image 不支持 OpenAI compatible-mode，必须走 DashScope 原生接口。
 """
 
@@ -14,6 +14,9 @@ import re
 import dashscope
 from dashscope import Generation, MultiModalConversation
 
+# 兜底 API 地址（千问平台）；实际以 .env 中 DASHSCOPE_BASE_URL 为准
+DEFAULT_BASE_URL = "https://dashscope-intl.aliyuncs.com/api/v1"
+
 # 摘要模型；可在 .env 用 SUMMARY_MODEL=... 覆盖（如 qwen-max / qwen-turbo）
 SUMMARY_MODEL = os.getenv("SUMMARY_MODEL") or "qwen-plus"
 # 默认生图模型；可在 .env 用 IMAGE_MODEL=... 覆盖（推荐 qwen-image-max 最强）
@@ -21,8 +24,9 @@ IMAGE_MODEL = "qwen-image-3.0-pro"
 
 
 def _configure_base_url():
+    # 从 .env 读取，不写死；缺失时回退 DEFAULT_BASE_URL
     url = os.getenv("DASHSCOPE_BASE_URL", "").strip().rstrip("/")
-    dashscope.base_http_api_url = url or "https://dashscope.aliyuncs.com/api/v1"
+    dashscope.base_http_api_url = url or DEFAULT_BASE_URL
 
 
 _configure_base_url()
