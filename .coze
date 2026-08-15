@@ -9,5 +9,11 @@ run = ["sh", "-c", "python -m uvicorn app:app --host 0.0.0.0 --port ${DEPLOY_RUN
 
 [deploy]
 build = ["python", "-m", "pip", "install", "-r", "requirements.txt"]
-# ⚠️ 数组项不做 shell 展开，端口必须用 sh -c 读取 ${DEPLOY_RUN_PORT}
-run = ["sh", "-c", "exec python -m uvicorn app:app --host 0.0.0.0 --port ${DEPLOY_RUN_PORT:-5000} --log-level info"]
+# 与 b4842e8 一致：裸数组形式，vefaas 平台实测可正常部署（端口变量由平台 shell 展开）
+run = [
+    "python", "-m", "uvicorn",
+    "app:app",
+    "--host", "0.0.0.0",
+    "--port", "${DEPLOY_RUN_PORT:-5000}",
+    "--log-level", "info"
+]
