@@ -37,6 +37,18 @@ def index():
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/api/models/list")
+def models_list(api_key: str = ""):
+    """拉取某个 API Key 可用的模型列表（按文本 / 视觉分类）。
+
+    用于管理端"输入 Key 自动带出模型"：传 ?api_key=xxx 或省略用 .env。
+    """
+    try:
+        return {"ok": True, **qwen_client.list_models(api_key or None)}
+    except qwen_client.QwenError as e:
+        raise HTTPException(400, str(e))
+
+
 @app.get("/api/models/config")
 def models_config():
     """返回当前摘要模型与生图模型名称。
@@ -46,8 +58,8 @@ def models_config():
     """
     return {
         "ok": True,
-        "summary_model": qwen_client.SUMMARY_MODEL,
-        "image_model": models_store.resolve_model_name(qwen_client.IMAGE_MODEL),
+        "summary_model": models_store.resolve_model_name(qwen_client.SUMMARY_MODEL, model_type="text"),
+        "image_model": models_store.resolve_model_name(qwen_client.IMAGE_MODEL, model_type="vision"),
     }
 
 
@@ -70,15 +82,18 @@ def admin_list_models():
 
 @app.post("/api/admin/models")
 def admin_add_model(payload: dict = Body(...)):
-    """新增模型配置（模型名称 + API Key + 备注），JSON body。"""
+    """新增模型配置（模型名称 + API Key + 类型 + 备注），JSON body。"""
     name = (payload.get("name") or "").strip()
     api_key = (payload.get("api_key") or "").strip()
     remark = (payload.get("remark") or "").strip()
+    model_type = (payload.get("model_type") or "").strip()
     if not name:
         raise HTTPException(400, "模型名称不能为空")
     if not api_key:
         raise HTTPException(400, "API Key 不能为空")
-    record = models_store.add_model(name, api_key, remark)
+    if model_type not in ("text", "vision"):
+        raise HTTPException(400, "模型类型必须是 text（文本/摘要）或 vision（视觉/生图）")
+    record = models_store.add_model(name, api_key, remark, model_type)
     return {"ok": True, "model": record}
 
 
@@ -125,11 +140,15 @@ def generate(
     try:
         source_text = _extract_source(mode, content, url, file)
 
-        # API Key 解析：请求方显式传 Key 优先 → 管理端配置（models_store）→ 回退 .env
-        effective_key = api_key or models_store.resolve_api_key() or None
+        # API Key 解析（按类型）：
+        #  摘要 → 管理端文本模型配置 → .env
+        #  生图 → 管理端视觉模型配置 → .env
+        # 请求方显式传 Key 时，摘要与生图都优先用它
+        summary_key = api_key or models_store.resolve_api_key(model_type="text") or None
+        vision_key = api_key or models_store.resolve_api_key(model_type="vision") or None
 
         kind = "mindmap" if type == "mindmap" else "poster"
-        summary = qwen_client.summarize(source_text, api_key=effective_key, kind=kind)
+        summary = qwen_client.summarize(source_text, api_key=summary_key, kind=kind)
 
         aspect = size if size in qwen_client.SIZES else "square"
         style = style if style in STYLES else "creative-long"
@@ -141,8 +160,8 @@ def generate(
         image_url = qwen_client.generate_poster(
             prompt,
             size=qwen_client.SIZES[aspect],
-            api_key=effective_key,
-            model=models_store.resolve_model_name(qwen_client.IMAGE_MODEL),
+            api_key=vision_key,
+            model=models_store.resolve_model_name(qwen_client.IMAGE_MODEL, model_type="vision"),
         )
         data_url = qwen_client.image_to_base64(image_url)
         return {

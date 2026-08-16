@@ -10,6 +10,7 @@ import base64
 import json
 import os
 import re
+from urllib.parse import urlparse
 
 import dashscope
 from dashscope import Generation, MultiModalConversation
@@ -46,6 +47,44 @@ def _resolve_key(api_key):
     if api_key and api_key.strip():
         return api_key.strip()
     return os.getenv("DASHSCOPE_API_KEY") or ""
+
+
+# 视觉（生图/图像编辑）模型特征关键词
+VISION_KEYWORDS = ("image", "wan2", "z-image", "flux", "picture", "draw")
+# 与文本摘要/生图无关的模型类型，列表拉取时排除
+IRRELEVANT_KEYWORDS = (
+    "audio", "tts", "asr", "speech", "realtime", "embedding", "ocr",
+    "translate", "s2s", "video", "live2d", "mt-",
+)
+
+
+def list_models(api_key: str = None) -> dict:
+    """拉取当前 Key 可用的 DashScope 模型列表，按文本 / 视觉分类。
+
+    返回 {"text": [...], "vision": [...]}；失败时抛 QwenError。
+    """
+    import requests
+
+    key = _resolve_key(api_key)
+    if not key:
+        raise QwenError("缺少 API Key，无法拉取模型列表")
+    base = (os.getenv("DASHSCOPE_BASE_URL") or DEFAULT_BASE_URL).strip().rstrip("/")
+    parsed = urlparse(base)
+    url = f"{parsed.scheme}://{parsed.netloc}/compatible-mode/v1/models"
+    resp = requests.get(url, headers={"Authorization": f"Bearer {key}"}, timeout=15)
+    if resp.status_code != 200:
+        raise QwenError(f"拉取模型列表失败 ({resp.status_code})：{resp.text[:200]}")
+    ids = [m.get("id") for m in (resp.json().get("data") or []) if m.get("id")]
+    text, vision = [], []
+    for mid in ids:
+        low = mid.lower()
+        if any(k in low for k in VISION_KEYWORDS):
+            vision.append(mid)
+        elif any(k in low for k in IRRELEVANT_KEYWORDS):
+            continue
+        else:
+            text.append(mid)
+    return {"text": sorted(text), "vision": sorted(vision)}
 
 
 def summarize(source_text: str, api_key: str = None, kind: str = "poster") -> dict:

@@ -8,6 +8,7 @@
 
 数据格式：
     {"models": [{"id": 1, "name": "qwen-plus", "api_key": "sk-xxx",
+                 "model_type": "text",  # text=文本模型(摘要)，vision=视觉模型(生图)
                  "remark": "备注", "created_at": "2026-..."}]}
 """
 
@@ -120,7 +121,10 @@ def _write_raw(text: str) -> None:
 
 
 def list_models() -> list[dict]:
-    """返回全部模型配置（含 api_key 明文，仅供后端使用）。优先走进程内缓存。"""
+    """返回全部模型配置（含 api_key 明文，仅供后端使用）。优先走进程内缓存。
+
+    兼容旧记录：无 model_type 字段时按模型名推断并补上，保证下游按类型解析可用。
+    """
     global _models_cache, _cache_ts
     if _models_cache is not None and time.time() - _cache_ts < CACHE_TTL:
         return _models_cache
@@ -135,18 +139,39 @@ def list_models() -> list[dict]:
         else:
             raw_models = data.get("models") if isinstance(data, dict) else None
             models = raw_models if isinstance(raw_models, list) else []
+    for m in models:
+        if not m.get("model_type"):
+            m["model_type"] = _infer_type(m.get("name") or "")
     _set_cache(models)
     return models
 
 
-def add_model(name: str, api_key: str, remark: str = "") -> dict:
-    """新增模型配置，返回完整记录。"""
+VALID_TYPES = ("text", "vision")  # text=文本模型(摘要)，vision=视觉模型(生图)
+# 旧记录（无 model_type 字段）按模型名推断类型：含生图/图像关键词视为 vision，否则 text
+_VISION_NAME_HINTS = ("image", "wan", "z-image", "flux", "picture")
+
+
+def _infer_type(name: str) -> str:
+    low = (name or "").lower()
+    return "vision" if any(k in low for k in _VISION_NAME_HINTS) else "text"
+
+
+def _matches_type(m: dict, model_type: str | None) -> bool:
+    """判断模型配置是否匹配目标类型；model_type 为空(不区分)时恒匹配。"""
+    if model_type is None:
+        return True
+    return (m.get("model_type") or _infer_type(m.get("name") or "")) == model_type
+
+
+def add_model(name: str, api_key: str, remark: str = "", model_type: str = "text") -> dict:
+    """新增模型配置，返回完整记录。model_type: text(摘要) / vision(生图)。"""
     models = list_models()
     next_id = max((m.get("id", 0) for m in models), default=0) + 1
     record = {
         "id": next_id,
         "name": name.strip(),
         "api_key": api_key.strip(),
+        "model_type": model_type if model_type in VALID_TYPES else "text",
         "remark": remark.strip(),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -167,29 +192,29 @@ def delete_model(model_id: int) -> bool:
     return True
 
 
-def resolve_model_name(default_model: str) -> str:
-    """生成时取模型名：管理端有配置时用第一条的模型名，否则回退默认值（.env / 内置）。
+def resolve_model_name(default_model: str, model_type: str | None = None) -> str:
+    """生成时取模型名：管理端有匹配类型的配置时用第一条的模型名，否则回退默认值。
 
-    与管理端 Key 解析保持同一优先级（第一条配置优先），保证"首页显示"与"实际调用"一致。
+    model_type: "text"=摘要模型，"vision"=生图模型；None=不区分类型取第一条。
     """
     for m in list_models():
         name = (m.get("name") or "").strip()
-        if name:
+        if name and _matches_type(m, model_type):
             return name
     return default_model
 
 
-def resolve_api_key(preferred_model: str | None = None) -> str | None:
-    """生成时取 Key：优先匹配指定模型名的配置 → 任意第一条 → None（回退 .env）。
+def resolve_api_key(preferred_model: str | None = None, model_type: str | None = None) -> str | None:
+    """生成时取 Key：优先匹配指定模型名的配置 → 匹配类型的任意第一条 → None（回退 .env）。
 
-    摘要与生图共用一个 DashScope 账户 Key，因此通常传 None 取第一条即可。
+    model_type: "text"=摘要用 Key，"vision"=生图用 Key；None=不区分类型。
     """
     models = list_models()
     if preferred_model:
         for m in models:
-            if m.get("name") == preferred_model and m.get("api_key"):
+            if m.get("name") == preferred_model and m.get("api_key") and _matches_type(m, model_type):
                 return m["api_key"]
     for m in models:
-        if m.get("api_key"):
+        if m.get("api_key") and _matches_type(m, model_type):
             return m["api_key"]
     return None
