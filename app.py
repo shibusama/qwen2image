@@ -60,7 +60,7 @@ def generate(
     mode: str = Form(...),
     content: str = Form(""),
     url: str = Form(""),
-    size: str = Form("square"),
+    size: str = Form("portrait"),
     style: str = Form("creative-long"),
     type: str = Form("poster"),
     api_key: str = Form(""),
