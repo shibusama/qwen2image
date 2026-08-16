@@ -39,11 +39,15 @@ def index():
 
 @app.get("/api/models/config")
 def models_config():
-    """返回当前摘要模型与生图模型名称（运行时实际值，来自 .env 或默认值）。"""
+    """返回当前摘要模型与生图模型名称。
+
+    摘要模型：.env SUMMARY_MODEL / 默认 qwen-plus；
+    生图模型：管理端有配置时用管理端第一条模型名（与生成逻辑一致），否则 .env IMAGE_MODEL。
+    """
     return {
         "ok": True,
         "summary_model": qwen_client.SUMMARY_MODEL,
-        "image_model": qwen_client.IMAGE_MODEL,
+        "image_model": models_store.resolve_model_name(qwen_client.IMAGE_MODEL),
     }
 
 
@@ -138,6 +142,7 @@ def generate(
             prompt,
             size=qwen_client.SIZES[aspect],
             api_key=effective_key,
+            model=models_store.resolve_model_name(qwen_client.IMAGE_MODEL),
         )
         data_url = qwen_client.image_to_base64(image_url)
         return {

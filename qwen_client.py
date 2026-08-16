@@ -82,8 +82,8 @@ def _parse_json(text: str) -> dict:
     return data
 
 
-def generate_poster(poster_prompt: str, size: str = "2048*2048", api_key: str = None) -> str:
-    """同步生图，返回图片 URL。"""
+def generate_poster(poster_prompt: str, size: str = "2048*2048", api_key: str = None, model: str = None) -> str:
+    """同步生图，返回图片 URL。model 缺省时用 IMAGE_MODEL（.env 可覆盖）。"""
     from prompt_builder import NEGATIVE_PROMPT
 
     key = _resolve_key(api_key)
@@ -91,7 +91,7 @@ def generate_poster(poster_prompt: str, size: str = "2048*2048", api_key: str = 
         raise QwenError("缺少 API Key：请在页面填入，或配置 .env 中的 DASHSCOPE_API_KEY")
     resp = MultiModalConversation.call(
         api_key=key,
-        model=IMAGE_MODEL,
+        model=model or IMAGE_MODEL,
         messages=[{"role": "user", "content": [{"text": poster_prompt}]}],
         result_format="message",
         stream=False,

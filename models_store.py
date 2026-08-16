@@ -167,6 +167,18 @@ def delete_model(model_id: int) -> bool:
     return True
 
 
+def resolve_model_name(default_model: str) -> str:
+    """生成时取模型名：管理端有配置时用第一条的模型名，否则回退默认值（.env / 内置）。
+
+    与管理端 Key 解析保持同一优先级（第一条配置优先），保证"首页显示"与"实际调用"一致。
+    """
+    for m in list_models():
+        name = (m.get("name") or "").strip()
+        if name:
+            return name
+    return default_model
+
+
 def resolve_api_key(preferred_model: str | None = None) -> str | None:
     """生成时取 Key：优先匹配指定模型名的配置 → 任意第一条 → None（回退 .env）。
 
