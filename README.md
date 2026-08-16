@@ -2,7 +2,7 @@
 
 把一份文档 / 一段文本，变成一张**信息图海报**或**思维导图**。
 
-由 `qwen-plus` 提炼核心要点，`qwen-image-3.0-pro` 排版成图。
+由 `qwen-plus` 提炼核心要点，`qwen-image-3.0` 排版成图。
 
 ## 功能
 
@@ -46,7 +46,7 @@ python -m uvicorn app:app --host 127.0.0.1 --port 8000
 ## 技术栈
 
 - 后端：FastAPI + DashScope SDK（千问）
-- 模型：`qwen-plus`（摘要提炼）、`qwen-image-3.0-pro`（生图）
+- 模型：`qwen-plus`（摘要提炼）、`qwen-image-3.0`（生图）
 - 文档解析：`pypdfium2`（PDF）、`python-docx`（DOCX）
 - 前端：原生 HTML / CSS / JS，无构建依赖
 

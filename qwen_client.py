@@ -1,4 +1,4 @@
-"""千问 API 封装：qwen-plus 摘要 + qwen-image-3.0-pro 生图。
+"""千问 API 封装：qwen-plus 摘要 + qwen-image-3.0 生图。
 
 API 地址统一从 .env 的 DASHSCOPE_BASE_URL 读取（海外千问平台
 https://dashscope-intl.aliyuncs.com/api/v1；阿里云百炼大陆站
@@ -20,7 +20,7 @@ DEFAULT_BASE_URL = "https://dashscope-intl.aliyuncs.com/api/v1"
 # 摘要模型；可在 .env 用 SUMMARY_MODEL=... 覆盖（如 qwen-max / qwen-turbo）
 SUMMARY_MODEL = os.getenv("SUMMARY_MODEL") or "qwen-plus"
 # 默认生图模型；可在 .env 用 IMAGE_MODEL=... 覆盖（推荐 qwen-image-max 最强）
-IMAGE_MODEL = "qwen-image-3.0-pro"
+IMAGE_MODEL = "qwen-image-3.0"
 
 
 def _configure_base_url():
