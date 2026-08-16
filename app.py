@@ -51,15 +51,11 @@ def models_list(api_key: str = ""):
 
 @app.get("/api/models/config")
 def models_config():
-    """返回当前摘要模型与生图模型名称。
-
-    摘要模型：.env SUMMARY_MODEL / 默认 qwen-plus；
-    生图模型：管理端有配置时用管理端第一条模型名（与生成逻辑一致），否则 .env IMAGE_MODEL。
-    """
+    """返回当前摘要模型与生图模型名称（仅来自管理端配置，未配置则返回空字符串）。"""
     return {
         "ok": True,
-        "summary_model": models_store.resolve_model_name(qwen_client.SUMMARY_MODEL, model_type="text"),
-        "image_model": models_store.resolve_model_name(qwen_client.IMAGE_MODEL, model_type="vision"),
+        "summary_model": models_store.resolve_model_name(model_type="text") or "",
+        "image_model": models_store.resolve_model_name(model_type="vision") or "",
     }
 
 
@@ -140,15 +136,25 @@ def generate(
     try:
         source_text = _extract_source(mode, content, url, file)
 
-        # API Key 解析（按类型）：
-        #  摘要 → 管理端文本模型配置 → .env
-        #  生图 → 管理端视觉模型配置 → .env
-        # 请求方显式传 Key 时，摘要与生图都优先用它
-        summary_key = api_key or models_store.resolve_api_key(model_type="text") or None
-        vision_key = api_key or models_store.resolve_api_key(model_type="vision") or None
+        # 严格模式：模型与 Key 只来自管理端配置，未配置直接报错（不回退 .env）
+        summary_model = models_store.resolve_model_name(model_type="text")
+        vision_model = models_store.resolve_model_name(model_type="vision")
+        if not summary_model:
+            raise HTTPException(400, "未配置文本模型（摘要用），请先到管理端添加")
+        if not vision_model:
+            raise HTTPException(400, "未配置视觉模型（生图用），请先到管理端添加")
+
+        summary_key = api_key or models_store.resolve_api_key(model_type="text")
+        vision_key = api_key or models_store.resolve_api_key(model_type="vision")
+        if not summary_key:
+            raise HTTPException(400, "文本模型缺少 API Key，请到管理端补充")
+        if not vision_key:
+            raise HTTPException(400, "视觉模型缺少 API Key，请到管理端补充")
 
         kind = "mindmap" if type == "mindmap" else "poster"
-        summary = qwen_client.summarize(source_text, api_key=summary_key, kind=kind)
+        summary = qwen_client.summarize(
+            source_text, api_key=summary_key, kind=kind, model=summary_model
+        )
 
         aspect = size if size in qwen_client.SIZES else "square"
         style = style if style in STYLES else "creative-long"
@@ -161,7 +167,7 @@ def generate(
             prompt,
             size=qwen_client.SIZES[aspect],
             api_key=vision_key,
-            model=models_store.resolve_model_name(qwen_client.IMAGE_MODEL, model_type="vision"),
+            model=vision_model,
         )
         data_url = qwen_client.image_to_base64(image_url)
         return {

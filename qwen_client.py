@@ -87,8 +87,11 @@ def list_models(api_key: str = None) -> dict:
     return {"text": sorted(text), "vision": sorted(vision)}
 
 
-def summarize(source_text: str, api_key: str = None, kind: str = "poster") -> dict:
-    """用 qwen-plus 把原文提炼成结构化 JSON（poster=信息图，mindmap=思维导图）。"""
+def summarize(source_text: str, api_key: str = None, kind: str = "poster", model: str = None) -> dict:
+    """用文本模型把原文提炼成结构化 JSON（poster=信息图，mindmap=思维导图）。
+
+    model 缺省时用 SUMMARY_MODEL（.env 可覆盖）；实际生成应由调用方从管理端解析传入。
+    """
     from prompt_builder import build_summary_mindmap_prompt, build_summary_prompt
 
     key = _resolve_key(api_key)
@@ -101,13 +104,31 @@ def summarize(source_text: str, api_key: str = None, kind: str = "poster") -> di
     )
     resp = Generation.call(
         api_key=key,
-        model=SUMMARY_MODEL,
+        model=model or SUMMARY_MODEL,
         messages=[{"role": "user", "content": prompt}],
         result_format="message",
     )
-    if resp.status_code != 200:
-        raise QwenError(f"摘要失败 ({resp.status_code})：{getattr(resp, 'message', resp)}")
-    text = resp.output.choices[0].message.content
+    if resp.status_code == 200:
+        text = resp.output.choices[0].message.content
+    else:
+        # 推理模型（如 qwq 系列）只支持流式模式 → 自动用流式重试
+        msg = str(getattr(resp, "message", resp))
+        if "stream" not in msg.lower():
+            raise QwenError(f"摘要失败 ({resp.status_code})：{msg}")
+        parts = []
+        for chunk in Generation.call(
+            api_key=key,
+            model=model or SUMMARY_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            result_format="message",
+            stream=True,
+        ):
+            if chunk.status_code != 200:
+                raise QwenError(f"摘要失败 ({chunk.status_code})：{getattr(chunk, 'message', chunk)}")
+            content = chunk.output.choices[0].message.content
+            if content:
+                parts.append(content)
+        text = "".join(parts)
     return _parse_json(text)
 
 
@@ -128,9 +149,16 @@ def generate_poster(poster_prompt: str, size: str = "2048*2048", api_key: str = 
     key = _resolve_key(api_key)
     if not key:
         raise QwenError("缺少 API Key：请在页面填入，或配置 .env 中的 DASHSCOPE_API_KEY")
+    model = model or IMAGE_MODEL
+    # 图像编辑模型（*edit*）不能做纯文生图，提前给出明确提示
+    if "edit" in model.lower():
+        raise QwenError(
+            f"模型 {model} 是图像编辑模型（需输入图片），不能直接文生图。"
+            "请在管理端将视觉模型改为文生图模型，如 qwen-image-3.0 / qwen-image-max"
+        )
     resp = MultiModalConversation.call(
         api_key=key,
-        model=model or IMAGE_MODEL,
+        model=model,
         messages=[{"role": "user", "content": [{"text": poster_prompt}]}],
         result_format="message",
         stream=False,

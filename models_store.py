@@ -12,6 +12,7 @@
                  "remark": "备注", "created_at": "2026-..."}]}
 """
 
+import copy
 import json
 import os
 import re
@@ -124,10 +125,12 @@ def list_models() -> list[dict]:
     """返回全部模型配置（含 api_key 明文，仅供后端使用）。优先走进程内缓存。
 
     兼容旧记录：无 model_type 字段时按模型名推断并补上，保证下游按类型解析可用。
+
+    返回深拷贝：调用方（如管理端脱敏）对返回值的修改不会污染进程内缓存。
     """
     global _models_cache, _cache_ts
     if _models_cache is not None and time.time() - _cache_ts < CACHE_TTL:
-        return _models_cache
+        return copy.deepcopy(_models_cache)
     raw = _read_raw()
     if not raw:
         models: list[dict] = []
@@ -143,7 +146,7 @@ def list_models() -> list[dict]:
         if not m.get("model_type"):
             m["model_type"] = _infer_type(m.get("name") or "")
     _set_cache(models)
-    return models
+    return copy.deepcopy(models)
 
 
 VALID_TYPES = ("text", "vision")  # text=文本模型(摘要)，vision=视觉模型(生图)
@@ -192,8 +195,8 @@ def delete_model(model_id: int) -> bool:
     return True
 
 
-def resolve_model_name(default_model: str, model_type: str | None = None) -> str:
-    """生成时取模型名：管理端有匹配类型的配置时用第一条的模型名，否则回退默认值。
+def resolve_model_name(model_type: str | None = None) -> str | None:
+    """生成时取模型名：返回管理端匹配类型的第一条模型名，未配置返回 None（不回退默认值）。
 
     model_type: "text"=摘要模型，"vision"=生图模型；None=不区分类型取第一条。
     """
@@ -201,7 +204,7 @@ def resolve_model_name(default_model: str, model_type: str | None = None) -> str
         name = (m.get("name") or "").strip()
         if name and _matches_type(m, model_type):
             return name
-    return default_model
+    return None
 
 
 def resolve_api_key(preferred_model: str | None = None, model_type: str | None = None) -> str | None:

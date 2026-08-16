@@ -10,8 +10,8 @@ let lastDataUrl = "";
     const resp = await fetch("/api/models/config");
     const data = await resp.json();
     if (data.ok) {
-      document.getElementById("modelSummary").textContent = data.summary_model;
-      document.getElementById("modelImage").textContent = data.image_model;
+      document.getElementById("modelSummary").textContent = data.summary_model || "未配置";
+      document.getElementById("modelImage").textContent = data.image_model || "未配置";
     }
   } catch {
     // 静默失败，保留 HTML 默认文案
