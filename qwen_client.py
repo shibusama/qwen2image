@@ -20,7 +20,7 @@ DEFAULT_BASE_URL = "https://dashscope-intl.aliyuncs.com/api/v1"
 # 摘要模型；可在 .env 用 SUMMARY_MODEL=... 覆盖（如 qwen-max / qwen-turbo）
 SUMMARY_MODEL = os.getenv("SUMMARY_MODEL") or "qwen-plus"
 # 默认生图模型；可在 .env 用 IMAGE_MODEL=... 覆盖（推荐 qwen-image-max 最强）
-IMAGE_MODEL = "qwen-image-3.0"
+IMAGE_MODEL = os.getenv("IMAGE_MODEL") or "qwen-image-3.0"
 
 
 def _configure_base_url():
@@ -91,7 +91,7 @@ def generate_poster(poster_prompt: str, size: str = "2048*2048", api_key: str = 
         raise QwenError("缺少 API Key：请在页面填入，或配置 .env 中的 DASHSCOPE_API_KEY")
     resp = MultiModalConversation.call(
         api_key=key,
-        model=os.getenv("IMAGE_MODEL") or IMAGE_MODEL,
+        model=IMAGE_MODEL,
         messages=[{"role": "user", "content": [{"text": poster_prompt}]}],
         result_format="message",
         stream=False,

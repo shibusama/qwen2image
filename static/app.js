@@ -4,6 +4,20 @@ let currentMode = "text";
 let currentType = "poster";
 let lastDataUrl = "";
 
+// 页面加载时获取后端实际模型配置，动态更新描述文案
+(async function loadModelConfig() {
+  try {
+    const resp = await fetch("/api/models/config");
+    const data = await resp.json();
+    if (data.ok) {
+      document.getElementById("modelSummary").textContent = data.summary_model;
+      document.getElementById("modelImage").textContent = data.image_model;
+    }
+  } catch {
+    // 静默失败，保留 HTML 默认文案
+  }
+})();
+
 // Tab 切换
 document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", () => {

@@ -37,6 +37,16 @@ def index():
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/api/models/config")
+def models_config():
+    """返回当前摘要模型与生图模型名称（运行时实际值，来自 .env 或默认值）。"""
+    return {
+        "ok": True,
+        "summary_model": qwen_client.SUMMARY_MODEL,
+        "image_model": qwen_client.IMAGE_MODEL,
+    }
+
+
 @app.get("/admin")
 def admin_page():
     """管理端页面：添加/管理模型名称与 API Key。"""
