@@ -18,9 +18,9 @@ from dashscope import Generation, MultiModalConversation
 # 兜底 API 地址（千问平台）；实际以 .env 中 DASHSCOPE_BASE_URL 为准
 DEFAULT_BASE_URL = "https://dashscope-intl.aliyuncs.com/api/v1"
 
-# 摘要模型；可在 .env 用 SUMMARY_MODEL=... 覆盖（如 qwen-max / qwen-turbo）
+# 摘要模型默认值（仅当调用方未传 model 时兜底；业务模型由管理端配置决定）
 SUMMARY_MODEL = os.getenv("SUMMARY_MODEL") or "qwen-plus"
-# 默认生图模型；可在 .env 用 IMAGE_MODEL=... 覆盖（推荐 qwen-image-max 最强）
+# 生图模型默认值（仅当调用方未传 model 时兜底；业务模型由管理端配置决定）
 IMAGE_MODEL = os.getenv("IMAGE_MODEL") or "qwen-image-3.0"
 
 

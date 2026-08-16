@@ -46,10 +46,8 @@ python -m pip install -r requirements.txt
 
 | 变量 | 说明 |
 |------|------|
-| `DASHSCOPE_BASE_URL` | API 地址，大陆 `https://dashscope.aliyuncs.com/api/v1`；海外 `https://dashscope-intl.aliyuncs.com/api/v1` |
-| `DASHSCOPE_API_KEY` | 千问 API Key（管理端未配置时的兜底） |
-| `SUMMARY_MODEL` | 兜底摘要模型，默认 `qwen-plus`（勿用 qwen3.7-flash，原生接口报 url error） |
-| `IMAGE_MODEL` | 兜底生图模型，默认 `qwen-image-3.0`（仅管理端未配置时生效） |
+| `DASHSCOPE_BASE_URL` | API 地址，大陆 `https://dashscope.aliyuncs.com/api/v1`；海外 `https://dashscope-intl.aliyuncs.com/api/v1`（必需） |
+| `DASHSCOPE_API_KEY` | 千问 API Key，仅用于 `/api/models/list` 未传 Key 时兜底拉取模型列表；实际生成模型与 Key 一律来自管理端 |
 
 `.env` 已被 gitignore，密钥不入库；`data/` 目录同理。
 
