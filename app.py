@@ -4,7 +4,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# 必须在 import qwen_client 之前加载 .env，否则 DASHSCOPE_BASE_URL / IMAGE_MODEL 无法生效
+# 必须在 import qwen_client 之前加载 .env，否则 DASHSCOPE_BASE_URL 无法生效
 load_dotenv()
 
 from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
