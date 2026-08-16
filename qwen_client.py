@@ -44,9 +44,8 @@ class QwenError(Exception):
 
 
 def _resolve_key(api_key):
-    if api_key and api_key.strip():
-        return api_key.strip()
-    return os.getenv("DASHSCOPE_API_KEY") or ""
+    """API Key 一律来自管理端/请求，不读 .env。为空由调用方报错。"""
+    return (api_key or "").strip()
 
 
 # 视觉（生图/图像编辑）模型特征关键词
@@ -96,7 +95,7 @@ def summarize(source_text: str, api_key: str = None, kind: str = "poster", model
 
     key = _resolve_key(api_key)
     if not key:
-        raise QwenError("缺少 API Key：请在页面填入，或配置 .env 中的 DASHSCOPE_API_KEY")
+        raise QwenError("缺少 API Key：请先到管理端配置文本模型")
     prompt = (
         build_summary_mindmap_prompt(source_text)
         if kind == "mindmap"
@@ -148,7 +147,7 @@ def generate_poster(poster_prompt: str, size: str = "2048*2048", api_key: str = 
 
     key = _resolve_key(api_key)
     if not key:
-        raise QwenError("缺少 API Key：请在页面填入，或配置 .env 中的 DASHSCOPE_API_KEY")
+        raise QwenError("缺少 API Key：请先到管理端配置视觉模型")
     model = model or IMAGE_MODEL
     # 图像编辑模型（*edit*）不能做纯文生图，提前给出明确提示
     if "edit" in model.lower():

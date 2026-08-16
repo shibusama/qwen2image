@@ -41,10 +41,12 @@ def index():
 def models_list(api_key: str = ""):
     """拉取某个 API Key 可用的模型列表（按文本 / 视觉分类）。
 
-    用于管理端"输入 Key 自动带出模型"：传 ?api_key=xxx 或省略用 .env。
+    用于管理端"输入 Key 自动带出模型"：必须传 ?api_key=xxx。
     """
+    if not api_key.strip():
+        raise HTTPException(400, "缺少 API Key：请先填写 API Key 再拉取模型列表")
     try:
-        return {"ok": True, **qwen_client.list_models(api_key or None)}
+        return {"ok": True, **qwen_client.list_models(api_key)}
     except qwen_client.QwenError as e:
         raise HTTPException(400, str(e))
 

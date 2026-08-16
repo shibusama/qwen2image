@@ -208,7 +208,7 @@ def resolve_model_name(model_type: str | None = None) -> str | None:
 
 
 def resolve_api_key(preferred_model: str | None = None, model_type: str | None = None) -> str | None:
-    """生成时取 Key：优先匹配指定模型名的配置 → 匹配类型的任意第一条 → None（回退 .env）。
+    """生成时取 Key：优先匹配指定模型名的配置 → 匹配类型的任意第一条 → None（未配置则由调用方报错）。
 
     model_type: "text"=摘要用 Key，"vision"=生图用 Key；None=不区分类型。
     """

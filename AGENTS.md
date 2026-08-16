@@ -33,9 +33,8 @@ python -m pip install -r requirements.txt
 
 - **模型与 Key（唯一来源是管理端，无回退）**：请求带 `api_key` → 用它；否则从管理端按类型取（文本型用于摘要、视觉型用于生图，取该类型第一条）
   - 摘要模型 = 管理端文本型配置的 name；生图模型 = 管理端视觉型配置的 name
-  - **任一类型未配置或缺 Key → 直接报错**（如"文本模型缺少 API Key，请到管理端补充"），不回退 `.env`
-  - `.env` 的 `DASHSCOPE_API_KEY` 仅作为兜底（管理端完全没有配置时）
-- **模型列表拉取**：`GET /api/models/list` 调 DashScope `/compatible-mode/v1/models` 按 Key 拉取全部可用模型，按名称关键词分类为 `text`（摘要）与 `vision`（生图）
+  - **任一类型未配置或缺 Key → 直接报错**（如"文本模型缺少 API Key，请到管理端补充"）
+- **模型列表拉取**：`GET /api/models/list` 调 DashScope `/compatible-mode/v1/models` 按 Key 拉取全部可用模型，按名称关键词分类为 `text`（摘要）与 `vision`（生图）；**必须传 `api_key`，未传直接报错**
   - 视觉模型必须选**文生图**模型（`qwen-image-3.0` / `qwen-image-max` 等）；**`qwen-image-edit-*` 是图像编辑模型，不能文生图**（报 "must contain 1~3 image content items"）
   - 文本模型注意：`qwq-*` 推理模型只支持流式（非流式报 400），`summarize` 已实现自动流式重试
 - **对象存储**：配置持久化到 S3 兼容对象存储（`COZE_BUCKET_*` 环境变量），每次写入生成带时间戳的新对象，读取取最新并清理旧版本
@@ -47,9 +46,8 @@ python -m pip install -r requirements.txt
 | 变量 | 说明 |
 |------|------|
 | `DASHSCOPE_BASE_URL` | API 地址，大陆 `https://dashscope.aliyuncs.com/api/v1`；海外 `https://dashscope-intl.aliyuncs.com/api/v1`（必需） |
-| `DASHSCOPE_API_KEY` | 千问 API Key，仅用于 `/api/models/list` 未传 Key 时兜底拉取模型列表；实际生成模型与 Key 一律来自管理端 |
 
-`.env` 已被 gitignore，密钥不入库；`data/` 目录同理。
+`.env` 已被 gitignore，密钥不入库；`data/` 目录同理。模型名与 API Key 全部存于管理端（对象存储），`.env` 不存任何密钥。
 
 ## 注意事项
 
