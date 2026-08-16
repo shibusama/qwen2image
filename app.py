@@ -7,11 +7,12 @@ from dotenv import load_dotenv
 # 必须在 import qwen_client 之前加载 .env，否则 DASHSCOPE_BASE_URL / IMAGE_MODEL 无法生效
 load_dotenv()
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 import extract
+import models_store
 import qwen_client
 from prompt_builder import STYLES, build_mindmap_prompt, build_poster_prompt
 
@@ -34,6 +35,45 @@ async def no_cache_static(request, call_next):
 @app.get("/")
 def index():
     return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/admin")
+def admin_page():
+    """管理端页面：添加/管理模型名称与 API Key。"""
+    return FileResponse(STATIC_DIR / "admin.html")
+
+
+@app.get("/api/admin/models")
+def admin_list_models():
+    """模型配置列表（API Key 脱敏返回）。"""
+    models = models_store.list_models()
+    for m in models:
+        key = m.get("api_key", "") or ""
+        m["api_key_masked"] = key[:6] + "****" + key[-4:] if len(key) > 10 else "****"
+        m.pop("api_key", None)
+    return {"ok": True, "models": models}
+
+
+@app.post("/api/admin/models")
+def admin_add_model(payload: dict = Body(...)):
+    """新增模型配置（模型名称 + API Key + 备注），JSON body。"""
+    name = (payload.get("name") or "").strip()
+    api_key = (payload.get("api_key") or "").strip()
+    remark = (payload.get("remark") or "").strip()
+    if not name:
+        raise HTTPException(400, "模型名称不能为空")
+    if not api_key:
+        raise HTTPException(400, "API Key 不能为空")
+    record = models_store.add_model(name, api_key, remark)
+    return {"ok": True, "model": record}
+
+
+@app.delete("/api/admin/models/{model_id}")
+def admin_delete_model(model_id: int):
+    """删除模型配置。"""
+    if not models_store.delete_model(model_id):
+        raise HTTPException(404, "模型配置不存在")
+    return {"ok": True}
 
 
 def _extract_source(mode: str, content: str, url: str, file) -> str:
@@ -71,8 +111,11 @@ def generate(
     try:
         source_text = _extract_source(mode, content, url, file)
 
+        # API Key 解析：请求方显式传 Key 优先 → 管理端配置（models_store）→ 回退 .env
+        effective_key = api_key or models_store.resolve_api_key() or None
+
         kind = "mindmap" if type == "mindmap" else "poster"
-        summary = qwen_client.summarize(source_text, api_key=api_key, kind=kind)
+        summary = qwen_client.summarize(source_text, api_key=effective_key, kind=kind)
 
         aspect = size if size in qwen_client.SIZES else "square"
         style = style if style in STYLES else "creative-long"
@@ -84,7 +127,7 @@ def generate(
         image_url = qwen_client.generate_poster(
             prompt,
             size=qwen_client.SIZES[aspect],
-            api_key=api_key,
+            api_key=effective_key,
         )
         data_url = qwen_client.image_to_base64(image_url)
         return {

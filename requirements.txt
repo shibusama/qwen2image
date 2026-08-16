@@ -6,3 +6,4 @@ pypdfium2
 requests
 python-dotenv
 python-multipart
+coze-coding-dev-sdk

@@ -46,7 +46,6 @@ function buildFormData() {
   fd.append("size", $("#size").value);
   fd.append("style", $("#style").value);
   fd.append("type", currentType);
-  fd.append("api_key", $("#apiKey").value.trim());
   if (currentMode === "file") {
     const f = $("#file").files[0];
     if (f) fd.append("file", f);
