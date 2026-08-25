@@ -72,3 +72,28 @@ def extract_file_bytes(filename: str, data: bytes) -> str:
     if name.endswith(".txt") or name.endswith(".md"):
         return extract_plain(data)
     raise ValueError(f"不支持的文件类型：{filename}（支持 PDF / DOCX / TXT / MD）")
+
+
+def image_size(raw: bytes):
+    """从图片文件头解析原始宽高（PNG/JPEG，纯标准库）。解析失败返回 None。"""
+    import struct
+
+    try:
+        if raw[:8] == b"\x89PNG\r\n\x1a\n":
+            w, h = struct.unpack(">II", raw[16:24])
+            return w, h
+        if raw[:2] == b"\xff\xd8":  # JPEG
+            i = 2
+            while i + 9 < len(raw):
+                if raw[i] != 0xFF:
+                    i += 1
+                    continue
+                marker = raw[i + 1]
+                if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+                    h, w = struct.unpack(">HH", raw[i + 5 : i + 9])
+                    return w, h
+                seg_len = struct.unpack(">H", raw[i + 2 : i + 4])[0]
+                i += 2 + seg_len
+    except Exception:
+        pass
+    return None

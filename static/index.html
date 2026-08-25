@@ -10,73 +10,121 @@
   <div class="wrap">
     <header class="hero">
       <h1>千问知识海报</h1>
-      <p>把一份文档 / 一段文本，变成一张信息图海报或思维导图。<br/>由 <code id="modelSummary">qwen-plus</code> 提炼要点，<code id="modelImage">qwen-image-3.0</code> 排版成图。</p>
-      <p class="admin-link"><a href="/admin">管理端：配置模型与 API Key →</a></p>
+      <p>文生图：文本 / 文档 → 信息图海报或思维导图。<br/>图生图：上传图片 → 一键换风格重绘。</p>
     </header>
 
     <section class="card">
+      <!-- 功能 Tab：文生图 / 图生图 -->
       <div class="tabs">
-        <button class="tab active" data-mode="text">粘贴文本</button>
-        <button class="tab" data-mode="file">上传文档</button>
-        <button class="tab" data-mode="url">抓取链接</button>
+        <button class="tab active" data-feature="text2img">文生图</button>
+        <button class="tab" data-feature="img2img">图生图</button>
       </div>
 
-      <div class="panel" data-panel="text">
-        <textarea id="content" rows="7" placeholder="把要转换的文章 / 笔记 / 讲解文本粘贴到这里…"></textarea>
+      <!-- ============ 文生图面板 ============ -->
+      <div class="feature-panel" data-feature-panel="text2img">
+        <div class="tabs">
+          <button class="tab active" data-mode="text">粘贴文本</button>
+          <button class="tab" data-mode="file">上传文档</button>
+          <button class="tab" data-mode="url">抓取链接</button>
+        </div>
+
+        <div class="panel" data-panel="text">
+          <textarea id="content" rows="7" placeholder="把要转换的文章 / 笔记 / 讲解文本粘贴到这里…"></textarea>
+        </div>
+        <div class="panel hidden" data-panel="file">
+          <label class="drop" for="file">
+            <input id="file" type="file" accept=".pdf,.docx,.txt,.md" />
+            <span>点击选择文件（PDF / DOCX / TXT / MD）</span>
+          </label>
+        </div>
+        <div class="panel hidden" data-panel="url">
+          <input id="url" type="text" placeholder="输入网页链接，例如 https://example.com/article" />
+        </div>
+
+        <div class="type-cards">
+          <button class="type-card active" data-type="poster">
+            <span class="tc-title">信息图海报</span>
+            <span class="tc-desc">一句话总结成海报</span>
+            <span class="tc-tag">消耗生图额度</span>
+          </button>
+          <button class="type-card" data-type="mindmap">
+            <span class="tc-title">思维导图</span>
+            <span class="tc-desc">中心 + 放射分支成图</span>
+            <span class="tc-tag">消耗生图额度</span>
+          </button>
+        </div>
+
+        <div class="options">
+          <label class="opt">
+            <span>版式</span>
+            <select id="size">
+              <option value="square">方图 1:1</option>
+              <option value="landscape">横图 16:9</option>
+              <option value="portrait" selected>竖图 9:16</option>
+            </select>
+          </label>
+          <label class="opt">
+            <span>风格</span>
+            <select id="style">
+              <option value="creative-long" selected>创意长图</option>
+              <option value="vaporwave">蒸汽波</option>
+              <option value="modern-gradient">现代渐变</option>
+              <option value="editorial">杂志编辑</option>
+              <option value="handdrawn">手绘插画</option>
+              <option value="neon">暗色霓虹</option>
+              <option value="vintage">复古报纸</option>
+              <option value="swiss">极简瑞士</option>
+            </select>
+          </label>
+          <label class="opt">
+            <span>生图模型</span>
+            <select id="imageModel"><option>加载中…</option></select>
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="go" class="btn primary">生成信息图海报</button>
+          <button id="again" class="btn hidden">再生成一张</button>
+        </div>
+
+        <p id="status" class="status" role="status"></p>
       </div>
-      <div class="panel hidden" data-panel="file">
-        <label class="drop" for="file">
-          <input id="file" type="file" accept=".pdf,.docx,.txt,.md" />
-          <span>点击选择文件（PDF / DOCX / TXT / MD）</span>
+
+      <!-- ============ 图生图面板 ============ -->
+      <div class="feature-panel hidden" data-feature-panel="img2img">
+        <label class="drop" for="imgFile">
+          <input id="imgFile" type="file" accept="image/*" />
+          <span>点击选择要重绘的图片（支持 PNG / JPG）</span>
         </label>
-      </div>
-      <div class="panel hidden" data-panel="url">
-        <input id="url" type="text" placeholder="输入网页链接，例如 https://example.com/article" />
-      </div>
 
-      <div class="type-cards">
-        <button class="type-card active" data-type="poster">
-          <span class="tc-title">信息图海报</span>
-          <span class="tc-desc">一句话总结成海报</span>
-          <span class="tc-tag">消耗生图额度</span>
-        </button>
-        <button class="type-card" data-type="mindmap">
-          <span class="tc-title">思维导图</span>
-          <span class="tc-desc">中心 + 放射分支成图</span>
-          <span class="tc-tag">消耗生图额度</span>
-        </button>
-      </div>
+        <div class="options">
+          <label class="opt">
+            <span>风格</span>
+            <select id="imgStyle"><option>加载中…</option></select>
+          </label>
+          <label class="opt">
+            <span>出图数量</span>
+            <select id="imgN">
+              <option value="1" selected>1 张</option>
+              <option value="2">2 张</option>
+              <option value="3">3 张</option>
+              <option value="4">4 张</option>
+              <option value="6">6 张</option>
+            </select>
+          </label>
+        </div>
 
-      <div class="options">
-        <label class="opt">
-          <span>版式</span>
-          <select id="size">
-            <option value="square">方图 1:1</option>
-            <option value="landscape">横图 16:9</option>
-            <option value="portrait" selected>竖图 9:16</option>
-          </select>
-        </label>
-        <label class="opt">
-          <span>风格</span>
-          <select id="style">
-            <option value="creative-long" selected>创意长图</option>
-            <option value="vaporwave">蒸汽波</option>
-            <option value="modern-gradient">现代渐变</option>
-            <option value="editorial">杂志编辑</option>
-            <option value="handdrawn">手绘插画</option>
-            <option value="neon">暗色霓虹</option>
-            <option value="vintage">复古报纸</option>
-            <option value="swiss">极简瑞士</option>
-          </select>
-        </label>
-      </div>
+        <div class="actions">
+          <button id="goImg" class="btn primary">生成</button>
+        </div>
 
-      <div class="actions">
-        <button id="go" class="btn primary">生成信息图海报</button>
-        <button id="again" class="btn hidden">再生成一张</button>
-      </div>
+        <p id="statusImg" class="status" role="status"></p>
 
-      <p id="status" class="status" role="status"></p>
+        <div id="resultImg" class="card result hidden">
+          <h2>图生图结果</h2>
+          <div id="previewImgs"></div>
+        </div>
+      </div>
     </section>
 
     <section id="result" class="card result hidden">
@@ -87,7 +135,7 @@
       </div>
     </section>
 
-    <footer class="note">提示：一次生成约需 30~60 秒，请耐心等待。</footer>
+    <footer class="note">提示：文生图约 30~60 秒，图生图约 30~90 秒，请耐心等待。</footer>
   </div>
 
   <script src="/static/app.js"></script>

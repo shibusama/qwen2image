@@ -1,5 +1,12 @@
 """构造摘要 prompt 与信息图海报 prompt。"""
 
+# 版式 → 输出像素尺寸（文生图）。与 _layout_desc 同源，避免 aspect 概念拆到多个模块。
+SIZES = {
+    "square": "2048*2048",
+    "landscape": "2048*1152",
+    "portrait": "1152*2048",
+}
+
 
 def _layout_desc(aspect: str) -> str:
     return {
@@ -194,3 +201,19 @@ STYLE: {style_desc}
 
 All text crisp and sharp, Chinese characters rendered correctly. No watermark, no frame borders beyond the canvas, no extra text beyond what is specified."""
     return prompt
+
+
+def build_generation_pipeline(kind: str, summary: dict, aspect: str, style: str) -> tuple[str, str]:
+    """一次调用生成所需的 (prompt, size_pixels)。
+
+    集中决定：prompt 用海报还是导图、aspect/style 是否回退、输出像素尺寸。
+    kind: "poster" | "mindmap"；aspect: square/landscape/portrait；style: STYLES 之一。
+    """
+    aspect = aspect if aspect in SIZES else "square"
+    style = style if style in STYLES else "creative-long"
+    size = SIZES[aspect]
+    if kind == "mindmap":
+        prompt = build_mindmap_prompt(summary, aspect, style)
+    else:
+        prompt = build_poster_prompt(summary, aspect, style)
+    return prompt, size

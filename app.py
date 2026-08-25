@@ -7,14 +7,13 @@ from dotenv import load_dotenv
 # 必须在 import qwen_client 之前加载 .env，否则 DASHSCOPE_BASE_URL 无法生效
 load_dotenv()
 
-from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 import extract
-import models_store
 import qwen_client
-from prompt_builder import STYLES, build_mindmap_prompt, build_poster_prompt
+from prompt_builder import build_generation_pipeline
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -37,70 +36,77 @@ def index():
     return FileResponse(STATIC_DIR / "index.html")
 
 
-@app.get("/api/models/list")
-def models_list(api_key: str = ""):
-    """拉取某个 API Key 可用的模型列表（按文本 / 视觉分类）。
-
-    用于管理端"输入 Key 自动带出模型"：必须传 ?api_key=xxx。
-    """
-    if not api_key.strip():
-        raise HTTPException(400, "缺少 API Key：请先填写 API Key 再拉取模型列表")
-    try:
-        return {"ok": True, **qwen_client.list_models(api_key)}
-    except qwen_client.QwenError as e:
-        raise HTTPException(400, str(e))
-
-
-@app.get("/api/models/config")
-def models_config():
-    """返回当前摘要模型与生图模型名称（仅来自管理端配置，未配置则返回空字符串）。"""
+@app.get("/api/models/available")
+def models_available():
+    """首页“生图模型”下拉框的数据源：可用候选池 + 默认模型（已剔除已知耗尽的模型）。"""
     return {
         "ok": True,
-        "summary_model": models_store.resolve_model_name(model_type="text") or "",
-        "image_model": models_store.resolve_model_name(model_type="vision") or "",
+        "models": qwen_client.IMAGE_MODEL_CANDIDATES,
+        "default": qwen_client.IMAGE_MODEL,
     }
 
 
-@app.get("/admin")
-def admin_page():
-    """管理端页面：添加/管理模型名称与 API Key。"""
-    return FileResponse(STATIC_DIR / "admin.html")
+@app.get("/api/img2img/styles")
+def img2img_styles():
+    """图生图页面的风格按钮数据源（风格名列表，描述由后端预置）。"""
+    return {"ok": True, "styles": list(qwen_client.IMG2IMG_STYLES.keys())}
 
 
-@app.get("/api/admin/models")
-def admin_list_models():
-    """模型配置列表（API Key 脱敏返回）。"""
-    models = models_store.list_models()
-    for m in models:
-        key = m.get("api_key", "") or ""
-        m["api_key_masked"] = key[:6] + "****" + key[-4:] if len(key) > 10 else "****"
-        m.pop("api_key", None)
-    return {"ok": True, "models": models}
+def _map_error(e: Exception) -> HTTPException:
+    """把内部异常统一映射为 HTTP 错误：HTTPException 原样；QwenError→502；ValueError→400；其余→500。"""
+    if isinstance(e, HTTPException):
+        return e
+    if isinstance(e, qwen_client.QwenError):
+        return HTTPException(502, str(e))
+    if isinstance(e, ValueError):
+        return HTTPException(400, str(e))
+    return HTTPException(500, f"处理失败：{e}")
 
 
-@app.post("/api/admin/models")
-def admin_add_model(payload: dict = Body(...)):
-    """新增模型配置（模型名称 + API Key + 类型 + 备注），JSON body。"""
-    name = (payload.get("name") or "").strip()
-    api_key = (payload.get("api_key") or "").strip()
-    remark = (payload.get("remark") or "").strip()
-    model_type = (payload.get("model_type") or "").strip()
-    if not name:
-        raise HTTPException(400, "模型名称不能为空")
-    if not api_key:
-        raise HTTPException(400, "API Key 不能为空")
-    if model_type not in ("text", "vision"):
-        raise HTTPException(400, "模型类型必须是 text（文本/摘要）或 vision（视觉/生图）")
-    record = models_store.add_model(name, api_key, remark, model_type)
-    return {"ok": True, "model": record}
+@app.post("/api/img2img")
+def img2img(
+    file: UploadFile = File(...),
+    style: str = Form("美式波普风"),
+    n: int = Form(1),
+    api_key: str = Form(""),
+):
+    """图生图：上传一张图 + 风格 + 出图数量；输出尺寸默认与原图一致。"""
+    import base64 as b64
 
+    try:
+        if not file:
+            raise HTTPException(400, "请选择要上传的图片")
+        raw = file.file.read()
+        if not raw:
+            raise HTTPException(400, "上传的图片为空")
+        # 转成 base64 data URL 交给编辑模型
+        mime = file.content_type or "image/png"
+        data_url = f"data:{mime};base64,{b64.b64encode(raw).decode('ascii')}"
 
-@app.delete("/api/admin/models/{model_id}")
-def admin_delete_model(model_id: int):
-    """删除模型配置。"""
-    if not models_store.delete_model(model_id):
-        raise HTTPException(404, "模型配置不存在")
-    return {"ok": True}
+        style_name = style if style in qwen_client.IMG2IMG_STYLES else "美式波普风"
+        prompt = qwen_client.IMG2IMG_STYLES[style_name]
+
+        # 输出尺寸与原图一致；无法解析时由模型默认
+        wh = extract.image_size(raw)
+        out_size = f"{wh[0]}*{wh[1]}" if wh else None
+        n = min(max(int(n or 1), 1), 6)
+
+        image_urls, used_model, note = qwen_client.generate_edit_with_fallback(
+            data_url, prompt, api_key=api_key, size=out_size, n=n
+        )
+        result = {
+            "ok": True,
+            "images": image_urls,
+            "used_model": used_model,
+            "style": style_name,
+            "size": out_size or "default",
+            "n": len(image_urls),
+        }
+        if note:
+            result["note"] = note
+        return result
+    except Exception as e:
+        raise _map_error(e)
 
 
 def _extract_source(mode: str, content: str, url: str, file) -> str:
@@ -131,6 +137,7 @@ def generate(
     style: str = Form("creative-long"),
     type: str = Form("poster"),
     api_key: str = Form(""),
+    model: str = Form(""),
     file: UploadFile = File(None),
 ):
     # 注意：这里保持同步 def（FastAPI 会放入线程池执行），
@@ -138,52 +145,31 @@ def generate(
     try:
         source_text = _extract_source(mode, content, url, file)
 
-        # 严格模式：模型与 Key 只来自管理端配置，未配置直接报错（不回退 .env）
-        summary_model = models_store.resolve_model_name(model_type="text")
-        vision_model = models_store.resolve_model_name(model_type="vision")
-        if not summary_model:
-            raise HTTPException(400, "未配置文本模型（摘要用），请先到管理端添加")
-        if not vision_model:
-            raise HTTPException(400, "未配置视觉模型（生图用），请先到管理端添加")
-
-        summary_key = api_key or models_store.resolve_api_key(model_type="text")
-        vision_key = api_key or models_store.resolve_api_key(model_type="vision")
-        if not summary_key:
-            raise HTTPException(400, "文本模型缺少 API Key，请到管理端补充")
-        if not vision_key:
-            raise HTTPException(400, "视觉模型缺少 API Key，请到管理端补充")
-
+        # 模型与 API Key 写死在 qwen_client，直接调用；api_key 传了则覆盖
         kind = "mindmap" if type == "mindmap" else "poster"
-        summary = qwen_client.summarize(
-            source_text, api_key=summary_key, kind=kind, model=summary_model
-        )
+        summary = qwen_client.summarize(source_text, api_key=api_key, kind=kind)
 
-        aspect = size if size in qwen_client.SIZES else "square"
-        style = style if style in STYLES else "creative-long"
-        if kind == "mindmap":
-            prompt = build_mindmap_prompt(summary, aspect, style)
-        else:
-            prompt = build_poster_prompt(summary, aspect, style)
+        prompt, size_pixels = build_generation_pipeline(kind, summary, size, style)
 
-        image_url = qwen_client.generate_poster(
+        image_url, used_model, switch_note = qwen_client.generate_poster_with_fallback(
             prompt,
-            size=qwen_client.SIZES[aspect],
-            api_key=vision_key,
-            model=vision_model,
+            size=size_pixels,
+            api_key=api_key,
+            preferred_model=model,   # 首页下拉选定的生图模型（可选）
         )
         data_url = qwen_client.image_to_base64(image_url)
-        return {
+        result = {
             "ok": True,
             "image_base64": data_url,
             "image_url": image_url,
             "summary": summary,
+            "used_model": used_model,
         }
-    except HTTPException:
-        raise
-    except qwen_client.QwenError as e:
-        raise HTTPException(502, str(e))
+        if switch_note:
+            result["note"] = switch_note   # 额度用完切模型时的提示
+        return result
     except Exception as e:
-        raise HTTPException(500, f"处理失败：{e}")
+        raise _map_error(e)
 
 
 if __name__ == "__main__":

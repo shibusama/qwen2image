@@ -31,6 +31,10 @@ body {
   font-size: 13px;
 }
 
+.back-link { margin-bottom: 10px; font-size: 13px; }
+.back-link a { color: var(--brand); text-decoration: none; }
+.back-link a:hover { text-decoration: underline; }
+
 .card {
   background: var(--card);
   border: 1px solid var(--border);
